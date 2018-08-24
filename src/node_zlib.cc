@@ -45,6 +45,7 @@ using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::HandleScope;
+using v8::Int32;
 using v8::Local;
 using v8::Number;
 using v8::Object;
@@ -419,12 +420,14 @@ class ZCtx : public AsyncWrap, public ThreadPoolWork {
   static void New(const FunctionCallbackInfo<Value>& args) {
     Environment* env = Environment::GetCurrent(args);
     CHECK(args[0]->IsInt32());
-    node_zlib_mode mode = static_cast<node_zlib_mode>(args[0]->Int32Value());
+    node_zlib_mode mode =
+        static_cast<node_zlib_mode>(args[0].As<Int32>()->Value());
     new ZCtx(env, args.This(), mode);
   }
 
   // just pull the ints out of the args and call the other Init
   static void Init(const FunctionCallbackInfo<Value>& args) {
+    Environment* env = Environment::GetCurrent(args);
     // Refs: https://github.com/nodejs/node/issues/16649
     // Refs: https://github.com/nodejs/node/issues/14161
     if (args.Length() == 5) {
@@ -459,7 +462,7 @@ class ZCtx : public AsyncWrap, public ThreadPoolWork {
           "invalid windowBits");
     }
 
-    int level = args[1]->Int32Value();
+    int level = args[1]->Int32Value(env->context()).FromJust();
     CHECK((level >= Z_MIN_LEVEL && level <= Z_MAX_LEVEL) &&
       "invalid compression level");
 
@@ -506,7 +509,9 @@ class ZCtx : public AsyncWrap, public ThreadPoolWork {
     CHECK(args.Length() == 2 && "params(level, strategy)");
     ZCtx* ctx;
     ASSIGN_OR_RETURN_UNWRAP(&ctx, args.Holder());
-    ctx->Params(args[0]->Int32Value(), args[1]->Int32Value());
+    Environment* env = ctx->env();
+    ctx->Params(args[0]->Int32Value(env->context()).FromJust(),
+                args[1]->Int32Value(env->context()).FromJust());
   }
 
   static void Reset(const FunctionCallbackInfo<Value> &args) {

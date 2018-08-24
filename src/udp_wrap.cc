@@ -171,6 +171,7 @@ void UDPWrap::GetFD(const FunctionCallbackInfo<Value>& args) {
 
 
 void UDPWrap::DoBind(const FunctionCallbackInfo<Value>& args, int family) {
+  Environment* env = Environment::GetCurrent(args);
   UDPWrap* wrap;
   ASSIGN_OR_RETURN_UNWRAP(&wrap,
                           args.Holder(),
@@ -211,11 +212,12 @@ void UDPWrap::DoBind(const FunctionCallbackInfo<Value>& args, int family) {
 
 
 void UDPWrap::Open(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
   UDPWrap* wrap;
   ASSIGN_OR_RETURN_UNWRAP(&wrap,
                           args.Holder(),
                           args.GetReturnValue().Set(UV_EBADF));
-  int fd = static_cast<int>(args[0]->IntegerValue());
+  int fd = static_cast<int>(args[0]->IntegerValue(env->context()).FromJust());
   int err = uv_udp_open(&wrap->handle_, fd);
 
   args.GetReturnValue().Set(err);
@@ -267,14 +269,14 @@ void UDPWrap::BufferSize(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(size);
 }
 
-
-#define X(name, fn)                                                           \
-  void UDPWrap::name(const FunctionCallbackInfo<Value>& args) {               \
-    UDPWrap* wrap = Unwrap<UDPWrap>(args.Holder());                           \
-    CHECK_EQ(args.Length(), 1);                                               \
-    int flag = args[0]->Int32Value();                                         \
-    int err = wrap == nullptr ? UV_EBADF : fn(&wrap->handle_, flag);          \
-    args.GetReturnValue().Set(err);                                           \
+#define X(name, fn)                                                            \
+  void UDPWrap::name(const FunctionCallbackInfo<Value>& args) {                \
+    Environment* env = Environment::GetCurrent(args);                          \
+    UDPWrap* wrap = Unwrap<UDPWrap>(args.Holder());                            \
+    CHECK_EQ(args.Length(), 1);                                                \
+    int flag = args[0]->Int32Value(env->context()).FromJust();                 \
+    int err = wrap == nullptr ? UV_EBADF : fn(&wrap->handle_, flag);           \
+    args.GetReturnValue().Set(err);                                            \
   }
 
 X(SetTTL, uv_udp_set_ttl)

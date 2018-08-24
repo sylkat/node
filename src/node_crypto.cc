@@ -983,17 +983,19 @@ void SecureContext::SetDHParam(const FunctionCallbackInfo<Value>& args) {
 
 
 void SecureContext::SetOptions(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
   SecureContext* sc;
   ASSIGN_OR_RETURN_UNWRAP(&sc, args.Holder());
 
-  if (args.Length() != 1 || !args[0]->IntegerValue()) {
+  if (args.Length() != 1 || !args[0]->IntegerValue(env->context()).FromJust()) {
     return THROW_ERR_INVALID_ARG_TYPE(
         sc->env(), "Options must be an integer value");
   }
 
-  SSL_CTX_set_options(
-      sc->ctx_.get(),
-      static_cast<long>(args[0]->IntegerValue()));  // NOLINT(runtime/int)
+  SSL_CTX_set_options(sc->ctx_.get(),
+                      static_cast<long>(args[0]  // NOLINT(runtime/int)
+                                            ->IntegerValue(env->context())
+                                            .FromJust()));
 }
 
 
@@ -1045,7 +1047,7 @@ void SecureContext::SetSessionTimeout(const FunctionCallbackInfo<Value>& args) {
         sc->env(), "Session timeout must be a 32-bit integer");
   }
 
-  int32_t sessionTimeout = args[0]->Int32Value();
+  int32_t sessionTimeout = args[0].As<Int32>()->Value();
   SSL_CTX_set_timeout(sc->ctx_.get(), sessionTimeout);
 }
 
@@ -1267,7 +1269,8 @@ int SecureContext::TicketKeyCallback(SSL* ssl,
                                         {0, 0}).ToLocalChecked();
   Local<Array> arr = ret.As<Array>();
 
-  int r = arr->Get(kTicketKeyReturnIndex)->Int32Value();
+  int r =
+      arr->Get(kTicketKeyReturnIndex)->Int32Value(env->context()).FromJust();
   if (r < 0)
     return r;
 
@@ -3095,6 +3098,7 @@ bool CipherBase::SetAutoPadding(bool auto_padding) {
 
 
 void CipherBase::SetAutoPadding(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
   CipherBase* cipher;
   ASSIGN_OR_RETURN_UNWRAP(&cipher, args.Holder());
 
@@ -4076,14 +4080,14 @@ void DiffieHellman::New(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() == 2) {
     if (args[0]->IsInt32()) {
       if (args[1]->IsInt32()) {
-        initialized = diffieHellman->Init(args[0]->Int32Value(),
-                                          args[1]->Int32Value());
+        initialized = diffieHellman->Init(args[0].As<Int32>()->Value(),
+                                          args[1].As<Int32>()->Value());
       }
     } else {
       if (args[1]->IsInt32()) {
         initialized = diffieHellman->Init(Buffer::Data(args[0]),
                                           Buffer::Length(args[0]),
-                                          args[1]->Int32Value());
+                                          args[1].As<Int32>()->Value());
       } else {
         initialized = diffieHellman->Init(Buffer::Data(args[0]),
                                           Buffer::Length(args[0]),

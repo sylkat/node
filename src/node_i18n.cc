@@ -502,7 +502,8 @@ void Transcode(const FunctionCallbackInfo<Value>&args) {
 
 void ICUErrorName(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  UErrorCode status = static_cast<UErrorCode>(args[0]->Int32Value());
+  UErrorCode status =
+      static_cast<UErrorCode>(args[0]->Int32Value(env->context()).FromJust());
   args.GetReturnValue().Set(
       String::NewFromUtf8(env->isolate(),
                           u_errorName(status),
